@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link rel="stylesheet" type="text/css" href="static/style.css" />
+    <link rel="stylesheet" type="text/css" href="static/slider-style.css" />
+    <title>Faceted Search example</title>
+    <script src="static/js.js"></script>
+</head>
+
+<body>
+    <i>Structured test Dataset</i>
+    <div class="catBox">
+        Category:
+        <ul class="menu">
+            <li class="selected">Oils Catalog</li>
+            <li><a href="./clothing.html">Clothing Catalog</a></li>
+        </ul>
+    </div>
+    <div class="clear"></div>
+    <hr>
+    <div id="content" class="content">
+        <div>
+            <div class="boxLabel">Filters</div>
+            <div class="treePanel">
+                <div id="filters" class="oils">
+                </div>
+            </div>
+        </div>
+        <div style="width: 100%">
+            <div id="contentLoader" style="width:100%; display: none" align="center"><img src="static/ajax-loader.gif">
+            </div>
+            <div id="results"></div>
+        </div>
+    </div>
+    <div id="pages"></div>
+    </div>
+    <script language="JavaScript">
+        /**
+        * Show product filters
+        */
+        function showFilters(containerId, filters) {
+            var s = '';
+            //uncountFilters
+            for (var field in filters.uncountFilters) {
+                if(field =='id') continue
+                s += '<div class="filterLabel">' + field + ' :</div><div class="filterGrid">';
+                for (var value in filters.uncountFilters[field]) {
+                    let count = filters.uncountFilters[field][value];
+                    s += '<label class="filterValue"><input type="checkbox" autocomplete="off" onchange="javascript:filterChange()" name="' + field + '" value="' + value + '" /> ' + value + ' (' + count + ')</label>';
+                }
+                s += '</div>'
+            }
+            //active countFilters
+            for (var field in filters.countFilters) {
+                if(filters.countFilters[field][2] == true){
+                s += '<div class="filterLabel">' + field + ' :</div>';
+                s += '<div style="margin-left: 0.5em ; margin-right: 0.5em; height: 20px" >'
+                s += '  <span class="values" style="float: left;">' + filters.countFilters[field][0] + '</span>'
+                s += '  <span class="values" style="float: right;">' + filters.countFilters[field][1] + '</span>'
+                s += '</div>'
+                s += '<div class="container" style="clear: both;">'
+                s += '  <div class="slider-track">'
+                s += '      <input type="range" name="' + field + '" step="0.001" min="' + filters.countFilters[field][0] + '" max="' + filters.countFilters[field][1] + '" value="' + filters.countFilters[field][0] + '" oninput="slideOne(this)" onmouseup="filterChange()">'
+                s += '      <input type="range" name="' + field + '" step="0.001" min="' + filters.countFilters[field][0] + '" max="' + filters.countFilters[field][1] + '" value="' + filters.countFilters[field][1] + '" oninput="slideTwo(this)" onmouseup="filterChange()">'
+                s += '  </div>'
+                s += ' </div>'
+                }
+            }
+            //inactive countFilters
+            for (var field in filters.countFilters) {
+                if(filters.countFilters[field][2] == false){
+                s += '<div class="filterLabel">' + field + ' :</div>';
+                s += '<div style="margin-left: 0.5em ; margin-right: 0.5em; height: 20px" >'
+                s += '  <span class="values" style="float: left;">' + filters.countFilters[field][0] + '</span>'
+                s += '  <span class="values" style="float: right;">' + filters.countFilters[field][1] + '</span>'
+                s += '</div>'
+                s += '<div class="container" style="clear: both;">'
+                s += '  <div class="slider-track">'
+                s += '      <input type="range" name="' + field + '" step="0.001" min="' + filters.countFilters[field][0] + '" max="' + filters.countFilters[field][1] + '" value="' + filters.countFilters[field][0] + '" oninput="slideOne(this)" onmouseup="filterChange()">'
+                s += '      <input type="range" name="' + field + '" step="0.001" min="' + filters.countFilters[field][0] + '" max="' + filters.countFilters[field][1] + '" value="' + filters.countFilters[field][1] + '" oninput="slideTwo(this)" onmouseup="filterChange()">'
+                s += '  </div>'
+                s += ' </div>'
+                }
+            }
+            document.getElementById(containerId).innerHTML = s
+        }
+
+        /**
+       * Show product cards
+       * @param containerId
+       * @param result
+       */
+        function showResults(containerId, result) {
+            let s = '';
+            s += '<div style="clear: both; text-align: left;">' + result.data.length + ' items from <b>' + result.count + '</b> results</div>';
+            // content
+            result.data.forEach(function (value) {
+                s += '<div class="card">'
+                s += '<div class="title">' + value.fields.Brand + '</div>'
+                s += '<div class="title">' + value.fields.Model + '</div>'
+                s += '<div class="title">' + value.fields.Generation + '</div>'
+                s += '<div class="title">' + value.fields['Modification (Engine)'] + '</div>'
+                // s += '<div class="properties"><img src="static/oil.png" align="left" width="50" hspace="2"/>'
+                // s += '<span>Viscosity: ' + value.fields.viscosity + '<br>'
+                // s += '<span>Volume: ' + value.fields.volume + '<br>'
+                s += '</div>'
+                s += '</div>'
+            });
+            document.getElementById(containerId).innerHTML = s;
+        }
+
+        function showPages(containerId, result) {
+            let page = result.page + 1
+            let maxPage = result.maxPage + 1
+
+            let s = '';
+            s += '<div style="clear: both; text-align: left;">'
+            s += '<ul class="pagination">'
+            s += '<li><a onclick="changePage(' + 1 + ',\'pages\')">|«</a></li>'
+            s += '<li id="prev pack"><a >«</a></li>'
+            //here will be left adjacent pages
+            s += '<li id="current page">'
+            s += '<a>'
+            s += '<form onsubmit="changePage(this.firstChild.value,\'pages\');return false">'
+            s += '<input type="text" style="width: ' + page.toString().length * 8 + 'px;" onkeydown="this.style.width = this.value.length * 8 + \'px\';" onkeyup="onkeydown()" value="' + page + '">'
+            s += '</form>'
+            s += '</a>'
+            s += '</li>'
+            //here will be right adjacent pages
+            s += '<li id="next pack"><a>»</a></li>'
+            s += '<li><a onclick="changePage(' + result.maxPage + ',\'pages\',)">»|</a></li>'
+            s += '</ul>'
+            s += '</div>'
+            document.getElementById(containerId).innerHTML = s;
+
+            let firstPage = document.getElementById('prev pack').nextSibling
+            let lastPage = document.getElementById('next pack').previousSibling
+            let container = document.getElementById(containerId)
+            let content = document.getElementsByClassName('pagination')[0]
+            //show left/right adjacent pages
+            for (i = 1; i <= result.maxPage + 1; i++) {
+                firstPage = document.getElementById('prev pack').nextSibling
+                lastPage = document.getElementById('next pack').previousSibling
+                containerTag = document.getElementById(containerId)
+                contentTag = document.getElementsByClassName('pagination')[0]
+                //left adjacent page
+                //if enough place for element and page is bigger than 0
+                if (firstPage.clientWidth < (containerTag.clientWidth - contentTag.clientWidth) && (page - i) >= 1) {
+                    document.getElementById('prev pack').insertAdjacentHTML('afterend',
+                        '<li><a onclick="changePage(' + (page - i) + ',\'pages\')">' + (page - i) + '</a></li>')
+                }
+                //right adjacent page
+                //if enough place for element and page is less than maxPage
+                if (lastPage.clientWidth < (containerTag.clientWidth - contentTag.clientWidth) && (page + i) < maxPage) {
+                    document.getElementById('next pack').insertAdjacentHTML('beforebegin',
+                        '<li><a onclick="changePage(' + (page + i) + ',\'pages\')">' + (page + i) + '</a></li>')
+                }
+            }
+
+            //without |« « buttons from one side + 1 because of array numeration
+            let firstPageIndex = Array.prototype.indexOf.call(contentTag.childNodes, firstPage) - 2 + 1
+            let lastPageIndex = Array.prototype.indexOf.call(contentTag.childNodes, lastPage) - 2 + 1
+            let pageIndex = Array.prototype.indexOf.call(contentTag.childNodes, document.getElementById('current page')) - 2 + 1
+            let mediumPageIndex = Math.round((firstPageIndex + lastPageIndex) / 2)
+            //set values for prev/next pack buttons
+            document.getElementById('prev pack').innerHTML = '<a onclick="changePage(' + (page - lastPageIndex - Math.abs(mediumPageIndex - pageIndex) + 1) + ',\'pages\',)">«</a>'
+            document.getElementById('next pack').innerHTML = '<a onclick="changePage(' + (page + lastPageIndex + Math.abs(mediumPageIndex - pageIndex) - 1) + ',\'pages\',)">»</a>'
+        }
+
+        function changePage(value = null, parentId) {
+            let el = document.getElementById(parentId);
+            if (!el) {
+                return
+            }
+            let activePage = document.evaluate('/html/body//div[@id="pages"]//ul[@class="pagination"]/li/a[@class="active"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+            //prevent click on the same page
+            if (value == activePage.textContent) {
+                return
+            }
+            //remove prev active page
+            activePage.remove('active')
+            //filterChange=>showPages=>setActivePage
+            filterChange(undefined, value)
+        }
+
+        function getActiveFilters(containerId) {
+            let el = document.getElementById(containerId);
+            if (!el) {
+                return [];
+            }
+            let values = { "countFilters": {}, "uncountFilters": {} };
+            //uncountFilters
+            let checkboxes = el.querySelectorAll('input[type="checkbox"]')
+            //if first load and there's no checkboxes on the page
+            if (checkboxes.length == 0) {
+                return {};
+            }
+            for (let i = 0; i < checkboxes.length; i++) {
+                if (checkboxes[i].checked) {
+                    // console.log(checkboxes[i])
+                    if (!values["uncountFilters"][checkboxes[i].name]) {
+                        values["uncountFilters"][checkboxes[i].name] = [checkboxes[i].value];
+                    } else {
+                        values["uncountFilters"][checkboxes[i].name].push(checkboxes[i].value);
+                    }
+                }
+            }
+            //countFilters
+            let sliderTracks = el.querySelectorAll('div[class="slider-track"]')
+            for (let sliderTrack of sliderTracks) {
+                if (sliderTrack.firstElementChild.value !== sliderTrack.firstElementChild.min || sliderTrack.lastElementChild.value !== sliderTrack.firstElementChild.max) {
+                    // console.log(sliderTrack)
+                    values["countFilters"][sliderTrack.firstElementChild.name] = [sliderTrack.firstElementChild.value, sliderTrack.lastElementChild.value];
+                }
+            }
+            return values;
+        }
+
+        function getActivePage(containerId) {
+            let el = document.getElementById(containerId);
+            if (!el) {
+                return [];
+            }
+
+            let activePage = document.evaluate('/html/body//div[@id="pages"]//ul[@class="pagination"]/li/a[@class="active"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.textContent
+            return activePage;
+        }
+
+        function setUrlFiltersAndPage(pageNumber = 0) {
+            // console.log(filters)
+            //get URL and GET parameters
+            const url = new URL(document.location);
+            const searchParams = url.searchParams;
+
+            concatActiveFilters = {}
+            concatUrlFilters = {}
+            Object.entries(getActiveFilters('filters')).forEach(function (filterCategory) {
+                Object.assign(concatActiveFilters, filterCategory[1])
+            });
+            Object.entries(getUrlFilters()).forEach(function (filterCategory) {
+                Object.assign(concatUrlFilters, filterCategory[1])
+            });
+
+            //foreach GET parameter key
+            Object.keys(concatUrlFilters).forEach(function (urlParameterKey) {
+                //if there's no GET parameter key in checked filters on the page --> delete this parameter
+                if (!(urlParameterKey in concatActiveFilters)) {
+                    searchParams.delete(urlParameterKey)
+                    window.history.pushState({}, '', url.toString())
+                }
+            });
+            //foreach checked filters on the page set according GET parameter
+            Object.entries(concatActiveFilters).forEach(function (activeFilter) {
+                url.searchParams.set(activeFilter[0], activeFilter[1]);
+            });
+
+            //set page parameter   
+            url.searchParams.set('page', pageNumber);
+            //push new url
+            history.pushState(null, null, url);
+        }
+
+        function getUrlFilters() {
+            //"+" to " " in the string
+            var params = decodeURIComponent(location.search.replace(/\+/g, '%20'));
+            // split string by & and return array of strings
+            var params = params.substring(1).split("&");
+            let res = { "urlFilters": {} }
+
+            if (params[0]) {
+                params.forEach(function (param) {
+                    //if key of GET parameter == page --> continue
+                    if (param.substring(0).split("=")[0] == 'page') { return }
+                    //key of GET parameter = values array of GET parameter,splitted by comma
+
+                    res["urlFilters"][param.substring(0).split("=")[0]] = param.substring(0).split("=")[1].substring(0).split(",");
+                });
+            }
+            return res
+        }
+
+        function getUrlPage() {
+            //"+" to " " in the string
+            var params = decodeURIComponent(location.search.replace(/\+/g, '%20'));
+            // split string by & and return array of strings
+            var params = params.substring(1).split("&");
+            let res = {};
+            if (params[0]) {
+                params.forEach(function (param) {
+                    //if key of GET parameter == page --> 
+                    if (param.substring(0).split("=")[0] == 'page') {
+                        res[param.substring(0).split("=")[0]] = param.substring(0).split("=")[1]
+                    }
+                });
+            }
+            if (JSON.stringify(res) == "{}") {
+                return 1
+            } else {
+                return res['page']
+            }
+        }
+
+        function setActiveFilters(containerId, filters) {
+            if (JSON.stringify(filters) !== "{}") {
+                //make concatFilters
+                concatFilters = {}
+                Object.entries(filters).forEach(function (filterCategory) {
+                    Object.assign(concatFilters, filterCategory[1])
+                });
+                //set Filters
+                Object.entries(concatFilters).forEach(function (filter) {
+                    filterNodes = document.getElementById(containerId).querySelectorAll('input[name="' + filter[0] + '"]')
+                    //set countFilters
+                    // console.log(filterNodes)
+                    if (filterNodes[0].type == "range") {
+                        for (var i = 0; i < filter[1].length; i++) {
+                            filterNodes[i].value = filter[1][i]
+                            if (i == 0) { slideOne(filterNodes[i]) }
+                            else if (i == 1) { slideTwo(filterNodes[i]) }
+                        }
+                    }
+                    //check uncountFilters
+                    if (filterNodes[0].type == "checkbox") {
+                        filter[1].forEach(function (item) {
+                            document.getElementById(containerId).querySelectorAll('input[type="checkbox"][name="' + filter[0] + '"][value="' + item + '"]').forEach(function (el) {
+                                el.checked = true;
+                            })
+                        })
+                    }
+                })
+            }
+        }
+
+        function setActivePage(containerId, pageNumber = 1) {
+            let el = document.getElementById(containerId);
+            if (!el) {
+                return [];
+            }
+            let currentPage = document.getElementById('current page').childNodes[0]
+            currentPage.className = 'active'
+        }
+
+        //filterChange cache which is necessary for showPages on resize
+        let result
+        function filterChange(filters = getActiveFilters('filters'), pageNumber = getActivePage('results')) {
+            showLoader('contentLoader')
+            console.log(filters)
+
+            ajax.post('./query.php?cat=cars&page=' + pageNumber, { 'filters': JSON.stringify(filters) }, function (data) {
+                console.log(data)
+                result = JSON.parse(data)
+                console.log(result)
+
+                showFilters('filters', result.filters)
+                setActiveFilters('filters', filters)
+
+                showResults('results', result.results)
+                showPages('pages', result.results)
+
+                // setCheckedFilters('filters', JSON.parse(filters))
+                setActivePage('pages', pageNumber)
+
+                //if check filters
+                if (filters['urlFilters'] == undefined || pageNumber !== getUrlPage()) {
+                    setUrlFiltersAndPage(pageNumber)
+                }
+                hideLoader('contentLoader');
+            })
+        }
+
+
+        function setStyle(pathFile) {
+            var elem = document.createElement('link');
+            elem.rel = 'stylesheet';
+            elem.type = 'text/css';
+            document.body.appendChild(elem);
+            elem.href = pathFile;
+        }
+
+        //on first load
+        document.addEventListener('DOMContentLoaded', function () {
+            filterChange(getUrlFilters(), getUrlPage());
+        });
+        //on history.back/forward
+        window.onpopstate = function (event) {
+            filterChange(getUrlFilters(), getUrlPage());
+        };
+        //on resize 
+        window.addEventListener('resize', function () {
+            showPages('pages', result.results)
+            setActivePage('pages', getUrlPage())
+        });
+
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <script language="JavaScript">
+
+        // window.onload = function () {
+        // let sliderTracks = document.querySelector(".slider-track");
+        // console.log(sliderTracks)
+        // for(var sliderTrack in sliderTracks)
+        //     slideOne(sliderTrack.firstElementChild);
+        // }
+        let minGap = 0;
+
+
+        function slideOne(sliderOne) {
+            sliderOne.value = sliderOne.value
+            sliderTwo = sliderOne.nextElementSibling
+            valueOne = sliderOne.parentElement.parentElement.previousSibling.firstElementChild
+            valueTwo = sliderTwo.parentElement.parentElement.previousSibling.lastElementChild
+
+            if (parseInt(sliderTwo.value) - parseInt(sliderOne.value) <= minGap) {
+                sliderTwo.value = sliderOne.value;
+
+                valueTwo.textContent = sliderTwo.value;
+                valueTwo.style.width = sliderTwo.value.toString().length * 8 + "px"
+            }
+            valueOne.textContent = sliderOne.value;
+            valueOne.style.width = sliderOne.value.toString().length * 8 + "px"
+
+            fillColor(sliderOne, sliderTwo, valueOne, valueTwo);
+        }
+        function slideTwo(sliderTwo) {
+
+            sliderOne = sliderTwo.previousElementSibling
+            valueOne = sliderOne.parentElement.parentElement.previousSibling.firstElementChild
+            valueTwo = sliderTwo.parentElement.parentElement.previousSibling.lastElementChild
+
+            if (parseInt(sliderTwo.value) - parseInt(sliderOne.value) <= minGap) {
+                sliderOne.value = sliderTwo.value;
+
+                valueOne.textContent = sliderOne.value;
+                valueOne.style.width = sliderOne.value.toString().length * 8 + "px"
+            }
+            valueTwo.textContent = sliderTwo.value;
+            valueTwo.style.width = sliderTwo.value.toString().length * 8 + "px"
+
+            fillColor(sliderOne, sliderTwo, valueOne, valueTwo);
+        }
+        function fillColor(sliderOne, sliderTwo, valueOne, valueTwo) {
+            //here also could be sliderTwo 
+            sliderMaxValue = sliderOne.max;
+            sliderMinValue = sliderOne.min;
+            sliderTrack = sliderOne.parentElement
+
+            percentVal1 = ((sliderOne.value - sliderMinValue) / (sliderMaxValue - sliderMinValue)) * 100;
+            percentVal2 = ((sliderTwo.value - sliderMinValue) / (sliderMaxValue - sliderMinValue)) * 100;
+
+            strVal1 = sliderOne.value.toString().length
+            strVal2 = sliderTwo.value.toString().length
+
+            valueOne.style.marginLeft = "clamp(-" + valueOne.parentElement.style.marginLeft + ",min(" + percentVal1 + "% - " + strVal1 * 8 / 2 + "px," + (percentVal1 + percentVal2) / 2 + "% - " + strVal1 * 8 + "px)," + "100% - " + (strVal1 + strVal2) * 8 + "px + " + valueOne.parentElement.style.marginRight + ")"
+            valueTwo.style.marginRight = "clamp(-" + valueOne.parentElement.style.marginRight + ",min(" + (100 - percentVal2) + "% - " + strVal2 * 8 / 2 + "px," + (100 - percentVal1 + 100 - percentVal2) / 2 + "% - " + strVal2 * 8 + "px), 100% - " + (strVal1 + strVal2) * 8 + "px + " + valueOne.parentElement.style.marginLeft + ")"
+
+            sliderTrack.style.background = `linear-gradient(to right, #dadae5 ${percentVal1}% , #808080 ${percentVal1}% , #808080 ${percentVal2}%, #dadae5 ${percentVal2}%)`;
+        }
+    </script>
+</body>
+
+</html>
