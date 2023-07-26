@@ -1,9 +1,9 @@
 1.Unzip data
-``` php [Zipper/unzipJson.php] ```
+``` php .../Zipper/unzipJson.php ```
 
 2.Launch in current directory
 
-`cd [Master]`
+`cd .../cars-catalogue-master`
 
 ``` php -S localhost:8000 ```
 
